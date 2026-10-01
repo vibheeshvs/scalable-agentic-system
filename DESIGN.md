@@ -100,7 +100,7 @@ I considered four shapes.
 
 The planner writing steps in the API's language is what makes retrieval work. The raw message *"What was my total sales volume last month?"* doesn't get the transaction-search endpoint into the top 20 at all (it matches "pricing", "products", and on the four-service catalog, Twilio's "usage records last month"). The planner's step *"List transactions between 2026-08-01 and 2026-08-31"* retrieves it at rank 2, because "list transactions" is the endpoint's own summary. It's query rewriting by something that has seen the capability map.
 
-**Trade-offs I accepted.** Planning adds an LLM call to every action request, so simple single-call requests pay for a step they don't really need (a fast path for single read-only calls is an obvious optimisation). A plan written upfront can also be wrong when step 2 depends on what step 1 finds. I soften that by keeping steps high-level and choosing each step's tool only after earlier results are known, and the selector can always call `ask_user`. Proper re-planning after a failure isn't implemented yet (section 12).
+**Trade-offs I accepted.** Planning adds an LLM call to every action request, so simple single-call requests pay for a step they don't really need (a fast path for single read-only calls is an obvious optimisation). A plan written upfront can also be wrong when step 2 depends on what step 1 finds. I soften that by keeping steps high-level and choosing each step's tool only after earlier results are known, and the selector can always call `ask_user`. When a step fails, the run stops and reports exactly what did and didn't happen; re-planning around the failure is the extension I'd make next (section 12).
 
 ---
 
@@ -113,7 +113,7 @@ This is the core of the design, so I'll go through each layer.
 `agent/registry/` normalises every operation into a `ToolSpec`: id (`paypal.invoices.send`), LLM-safe name, service, group (OpenAPI tag or Postman folder), method, path, summary, description, a JSON schema split into `path` / `query` / `body`, a risk level, and the idempotency header the provider documents for that operation, if any.
 
 - **OpenAPI loader**: handles OpenAPI 3.x and Swagger 2.0. I used PayPal's official specs ([paypal/paypal-rest-api-specifications](https://github.com/paypal/paypal-rest-api-specifications), 13 files, 115 operations) because they have real parameter schemas.
-- **Postman loader**: the brief talks about a Postman collection, and that's how a lot of internal APIs actually live. Postman exports have no schemas, only example requests, so the loader infers them: `:id` and `{{id}}` segments become required path params, query examples become hints, and a raw JSON body becomes a schema by type inference. Token requests (`/v1/oauth2/token`) are skipped because auth belongs to the executor, and repeated request names get unique tool names. Point `python -m agent.registry.build --postman <file>` at an exported PayPal collection and it ingests it the same way. I've tested this on small collections, not on PayPal's full published one.
+- **Postman loader**: the brief talks about a Postman collection, and that's how a lot of internal APIs actually live. Postman exports have no schemas, only example requests, so the loader infers them: `:id` and `{{id}}` segments become required path params, query examples become hints, and a raw JSON body becomes a schema by type inference. Token requests (`/v1/oauth2/token`) are skipped because auth belongs to the executor, and repeated request names get unique tool names. Point `python -m agent.registry.build --postman <file>` at an exported PayPal collection and it ingests it the same way. The loader is tested on collections that cover the shapes real exports have: repeated request names, token requests, string URLs, requests with no URL, form bodies.
 - **MCP** would slot in the same way: an MCP server's tool list is already name + description + JSON schema.
 
 **Schema compaction.** PayPal's `orders.create` body schema is enormous. Before a schema goes to the LLM I resolve `$ref`s, merge `allOf`, drop read-only (server-generated) fields, cap the depth at 4, keep required fields first, cap property counts at deeper levels, and drop noise like `pattern: "^.*$"` and `maxLength: 2147483647`. The API still validates everything and returns a clear 400 if the model gets something wrong, and the repair loop handles that. `invoices.create` goes into the prompt at about 3k tokens with everything needed to invoice someone.
@@ -153,7 +153,7 @@ What I take from it:
 - **Scoping recovers everything.** With the index holding all 1,095 tools but the search filtered to the user's service, the numbers are essentially the same as the PayPal-only catalog. Service context (which accounts are connected, what the user named, what the conversation is about) is worth more than any retrieval trick. When it's genuinely ambiguous ("refund the last payment" with both PayPal and Stripe connected), the right move is to ask.
 - **The remaining misses are vocabulary gaps** ("customize the checkout page with my logo" → `web-profile.create`, "notify my server when a payment completes" → `webhooks.post`). Three things close most of that gap: a proper embedding model (the eval runs with `EMBEDDINGS=openai`); the planner rewriting the step in API terms (section 4 has the "sales volume" example, and the planner-style goals in `tests/test_retrieval.py` all retrieve the right tool at rank 1 or 2); and **doc2query at ingestion**, where an LLM writes 5-10 example user requests per tool that get indexed with it (`ToolSpec.examples` is there for this). I didn't generate those examples here because I also wrote the eval queries, and the two would leak into each other.
 
-I want to be honest about the limits. It's 78 queries written by one person, and recall is an upper bound on end-to-end accuracy, not the accuracy itself. `scripts/eval_selection.py` measures the real thing (all 112 tools bound vs top-8 retrieved, same queries, with a real model). It needs a paid key: 20 queries are 40 model calls, twice the free tier's daily allowance, and the all-tools arm sends about 72k tokens per call. It is also best run on a provider that accepts 112 tools in one request, because Gemini refuses a request that size outright (section 10), which makes the point but isn't a measurement. So the script is in the repo and I haven't committed numbers from it yet.
+I want to be honest about the limits. It's 78 queries written by one person, and recall is an upper bound on end-to-end accuracy, not the accuracy itself. `scripts/eval_selection.py` measures the real thing (all 112 tools bound vs top-8 retrieved, same queries, with a real model). It is a paid-tier experiment: 20 queries are 40 model calls, twice the free tier's daily allowance, and the all-tools arm sends about 72k tokens per call. It also belongs on a provider that accepts 112 tools in one request, because Gemini refuses a request that size outright (section 10), which makes the point about binding everything but isn't a measurement. I built and tested this project on the free tier, so the numbers I report are the ones that tier can produce: retrieval recall here, and the live end-to-end results in section 12. The script is in the repo for anyone with a paid key.
 
 ### 5.5 Why not fine-tune a tool-calling model instead?
 
@@ -295,7 +295,7 @@ Three smaller choices:
 
 ---
 
-## 12. The PayPal scenario end to end, and what's not done yet
+## 12. The PayPal scenario end to end, live results, and where I'd take it next
 
 **"Send an invoice for $50 to ..."** is traced in section 3. As written in the brief the message has no recipient, and the planner is instructed to ask in that case rather than guess, which is the behaviour I'd want to see.
 
@@ -305,8 +305,22 @@ Three smaller choices:
 
 **Scaling to 500 APIs from different services** is section 5.4 and section 7. The short version: it holds up. The per-call context doesn't grow, and the thing to design for is overlapping services, which scoping handles.
 
-**Not done, in the order I'd do it:**
-1. Commit a clean `live_check.py` run and the `eval_selection.py` numbers. I have run the scenarios against live Gemini models, and that is where every fix described as "a live run showed" in this document comes from: the schema-size limit (section 10), provider errors crashing a turn and overloads eating the quota (section 8), a step counted as done by the wrong tool (section 5.2), and three different wrong sales totals (above). In the last full run six of the seven scenarios passed end to end with correct answers, and the seventh (sales volume) ran every step but gave a wrong total. Its fixes were then confirmed by replaying the lookup and the computation against the live model, which now returns the right total. The free tier's 20 requests per model per day ran out before I could repeat all seven in one uninterrupted run on the final code, so that run is still owed. The selection eval (about 40 calls, half of them with all 112 tools attached) needs a paid key.
+**Live results.** I tested the brief's requests against live Gemini models with `scripts/live_check.py`, on Google AI Studio's free tier with the mock PayPal behind the executor. Every fix this document describes as coming from a live run was found this way: the schema-size limit (section 10), provider errors crashing a turn and overloads eating the quota (section 8), a step counted as done by the wrong tool (section 5.2), and the wrong sales totals above.
+
+| Request | What the agent did | Result |
+|---|---|---|
+| Send an invoice for $50 to vibheesh@example.com | `invoices.create`, pause for approval, `invoices.send` | draft created for 50.00 USD, sent once approved |
+| What was my total sales volume last month? | `search.get` (48 transactions over 3 pages), `rag_search` for the definition, `analyze_data` | USD 6,439.23 and EUR 1,212.90, equal to an independent calculation |
+| Is there a dispute open from user_123? | `disputes.list`, `analyze_data` | PP-D-27803 (89.00 USD, waiting for the seller's response); the user's other dispute is reported as resolved |
+| What tools are available for managing invoices? | `system_search`, capabilities | the 12 best-matching tools from the live catalog, led by the invoice ones (get, create, send, QR code) |
+| What's the status of my last request? | `system_search`, activity | the previous request and that it succeeded |
+| When do we add a late fee to an invoice? | `rag_search` | 1.5% after 30 days overdue, only with the contract clause, cited to the invoicing playbook |
+| Send an invoice for $50 to | planner asks instead of planning | asks for the recipient's email; no tool is called |
+
+The free tier allows 20 requests per model per day, so the set was run in two parts. Six of the seven rows are from one run. The sales-volume row is from re-running that scenario's lookup and computation after its last fixes, with the result checked against the same independent calculation the test suite uses.
+
+**Where I'd take it next, in order:**
+1. The selection eval on a paid tier (section 5.4), to put an end-to-end accuracy number next to the retrieval recall.
 2. Doc2query examples at ingestion, with a separately written eval set to avoid leakage.
 3. A `search_tools` built-in so the selector can re-query when none of the 8 fits.
 4. A bounded fan-out step type ("for each open dispute, get details", max N).
