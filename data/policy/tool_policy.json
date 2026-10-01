@@ -1,0 +1,7 @@
+{
+  "_comment": "Per-tool overrides applied after ingestion. The risk heuristics get most tools right; this is where a human fixes the rest. 'disabled' removes a tool from the catalog: server.callback is an endpoint PayPal calls on the merchant, and adjudicate / require-evidence are sandbox-only dispute simulators.",
+  "paypal.server.callback": "disabled",
+  "paypal.disputes.adjudicate": "disabled",
+  "paypal.disputes.require-evidence": "disabled",
+  "paypal.disputes.provide-supporting-info": "high"
+}

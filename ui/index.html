@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Console</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f172a'/%3E%3Cpath d='M9 11l6 5-6 5M17 21h6' stroke='%2322c55e' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #0f172a; --card: #1b2336; --muted: #272f42; --border: #3b475c; --text: #f8fafc; --dim: #a3b1c6;
+    --accent: #22c55e; --on-accent: #0f172a; --danger: #f87171; --warn: #fbbf24; --info: #38bdf8;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+    --r: 8px;
+  }
+  :root[data-theme="light"] {
+    --bg: #f8fafc; --card: #ffffff; --muted: #eef2f7; --border: #c3cedc; --text: #0f172a; --dim: #475569;
+    --accent: #15803d; --on-accent: #ffffff; --danger: #b91c1c; --warn: #92400e; --info: #0369a1;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 var(--sans); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
+  code, .mono { font-family: var(--mono); font-size: 0.86em; }
+  .app { display: grid; grid-template-columns: 220px 1fr; height: 100vh; }
+  aside { background: var(--card); border-right: 1px solid var(--border); padding: 16px 12px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
+  .brand { font-weight: 600; font-size: 1.05rem; padding: 0 8px; }
+  .brand small { display: block; color: var(--dim); font-weight: 400; font-size: 0.8rem; }
+  nav { display: flex; flex-direction: column; gap: 4px; }
+  nav button { text-align: left; background: none; border: 0; border-radius: var(--r); padding: 10px 12px; min-height: 44px; color: var(--dim); transition: background .15s, color .15s; }
+  nav button:hover { background: var(--muted); color: var(--text); }
+  nav button[aria-selected="true"] { background: var(--muted); color: var(--text); font-weight: 600; box-shadow: inset 3px 0 0 var(--accent); }
+  .facts { font-size: 0.8rem; color: var(--dim); padding: 0 8px; display: grid; gap: 6px; }
+  .facts b { color: var(--text); font-weight: 500; word-break: break-word; }
+  .side-bottom { margin-top: auto; display: grid; gap: 8px; padding: 0 4px; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+  .seg button { background: none; border: 0; padding: 8px; min-height: 40px; color: var(--dim); transition: background .15s; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .seg button:disabled { opacity: .45; cursor: not-allowed; }
+  .btn { background: var(--muted); border: 1px solid var(--border); border-radius: var(--r); padding: 8px 14px; min-height: 40px; transition: background .15s, border-color .15s; }
+  .btn:hover { border-color: var(--dim); }
+  .btn.primary { background: var(--accent); color: var(--on-accent); border-color: transparent; font-weight: 600; }
+  .btn.danger { border-color: var(--danger); color: var(--danger); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  main { display: flex; flex-direction: column; min-width: 0; height: 100vh; }
+  .banner { background: var(--muted); border-bottom: 1px solid var(--border); padding: 8px 20px; font-size: 0.85rem; color: var(--dim); }
+  .banner strong { color: var(--warn); }
+  section { flex: 1; min-height: 0; display: none; flex-direction: column; }
+  section.on { display: flex; }
+  .head { padding: 16px 20px 8px; }
+  .head h1 { margin: 0; font-size: 1.15rem; }
+  .head p { margin: 4px 0 0; color: var(--dim); font-size: 0.9rem; max-width: 78ch; }
+  .scroll { flex: 1; overflow-y: auto; padding: 8px 20px 20px; }
+  /* chat */
+  .msg { max-width: 900px; margin: 0 0 14px; }
+  .msg .who { font-size: 0.75rem; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+  .bubble { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 12px 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .msg.user .bubble { background: var(--muted); }
+  .trace { border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 8px; overflow: hidden; }
+  .trace > header { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; background: var(--muted); font-size: 0.82rem; color: var(--dim); }
+  .step { padding: 10px 12px; border-top: 1px solid var(--border); display: grid; grid-template-columns: 28px 1fr; gap: 8px; }
+  .step .n { color: var(--dim); font-family: var(--mono); }
+  .step .goal { overflow-wrap: anywhere; }
+  .step .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; font-size: 0.82rem; color: var(--dim); }
+  .chip { display: inline-block; border: 1px solid var(--border); border-radius: 999px; padding: 1px 9px; font-size: 0.75rem; white-space: nowrap; color: var(--dim); }
+  .chip.done, .chip.succeeded, .chip.ok, .chip.read { color: var(--accent); border-color: var(--accent); }
+  .chip.failed, .chip.error, .chip.high, .chip.rejected_by_validation { color: var(--danger); border-color: var(--danger); }
+  .chip.pending, .chip.running, .chip.write, .chip.partial, .chip.needs_input, .chip.cancelled, .chip.skipped, .chip.declined_by_user { color: var(--warn); border-color: var(--warn); }
+  details { margin-top: 6px; font-size: 0.85rem; }
+  summary { cursor: pointer; color: var(--dim); padding: 4px 0; }
+  pre { margin: 6px 0 0; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; overflow-x: auto; font: 0.8rem/1.45 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow-y: auto; }
+  .err { color: var(--danger); font-size: 0.85rem; margin-top: 4px; overflow-wrap: anywhere; }
+  .approve { border: 1px solid var(--warn); border-radius: var(--r); padding: 12px 14px; background: var(--card); }
+  .approve h2 { margin: 0 0 4px; font-size: 1rem; }
+  .approve .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: flex-end; }
+  .approve input { flex: 1; min-width: 160px; }
+  .composer { border-top: 1px solid var(--border); padding: 12px 20px 16px; background: var(--card); }
+  .examples { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .examples button { background: none; border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; font-size: 0.82rem; color: var(--dim); min-height: 34px; transition: border-color .15s, color .15s; }
+  .examples button:hover { border-color: var(--accent); color: var(--text); }
+  .send { display: flex; gap: 8px; align-items: flex-end; }
+  textarea, input[type="text"], input[type="search"], select { background: var(--bg); border: 1px solid var(--border); border-radius: var(--r); padding: 9px 12px; min-height: 40px; }
+  textarea { flex: 1; resize: vertical; min-height: 44px; max-height: 160px; }
+  label { font-size: 0.8rem; color: var(--dim); display: grid; gap: 4px; }
+  .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -1px; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; } * { transition: none !important; } }
+  /* tables + cards */
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; padding: 0 20px 10px; }
+  .controls .grow { flex: 1; min-width: 240px; }
+  .controls input { width: 100%; }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--muted); color: var(--dim); font-weight: 500; white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  td.num { font-family: var(--mono); white-space: nowrap; }
+  .note { color: var(--dim); font-size: 0.86rem; margin: 10px 0; max-width: 90ch; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 12px 14px; }
+  .card .k { color: var(--dim); font-size: 0.78rem; }
+  .card .v { font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .group { border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 8px; background: var(--card); }
+  .group > summary { padding: 10px 14px; color: var(--text); display: flex; justify-content: space-between; gap: 12px; }
+  .group .tablewrap { border: 0; border-top: 1px solid var(--border); border-radius: 0; }
+  .run { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 10px 14px; margin-bottom: 8px; }
+  .run .top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .run .calls { margin: 6px 0 0; padding-left: 18px; color: var(--dim); font-size: 0.85rem; }
+  .empty { color: var(--dim); padding: 24px 0; }
+  @media (max-width: 820px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; min-height: 100vh; }
+    aside { border-right: 0; border-bottom: 1px solid var(--border); }
+    nav { flex-direction: row; flex-wrap: wrap; }
+    .facts { display: none; }
+    main { height: auto; min-height: 70vh; }
+    .side-bottom { margin-top: 0; grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand">Agent Console<small>scalable agentic system</small></div>
+    <nav role="tablist" aria-label="Views">
+      <button role="tab" data-tab="chat" aria-selected="true">Chat</button>
+      <button role="tab" data-tab="tools" aria-selected="false">Tool retrieval</button>
+      <button role="tab" data-tab="catalog" aria-selected="false">Catalog</button>
+      <button role="tab" data-tab="activity" aria-selected="false">Activity log</button>
+    </nav>
+    <div class="facts" id="facts"></div>
+    <div class="side-bottom">
+      <div class="seg" role="group" aria-label="Model">
+        <button id="mode-live" aria-pressed="false">Live model</button>
+        <button id="mode-demo" aria-pressed="true">Offline demo</button>
+      </div>
+      <button class="btn" id="new-thread">New conversation</button>
+      <button class="btn" id="theme">Light theme</button>
+    </div>
+  </aside>
+
+  <main>
+    <div class="banner" id="banner" role="status"></div>
+
+    <section id="chat" class="on" aria-label="Chat">
+      <div class="scroll" id="log" aria-live="polite"></div>
+      <div class="composer">
+        <div class="examples" id="examples" aria-label="Example requests"></div>
+        <form class="send" id="form">
+          <label style="flex:1">Message
+            <textarea id="input" rows="1" placeholder="Ask the agent to do something with the connected accounts"></textarea>
+          </label>
+          <button class="btn primary" id="send" type="submit">Send</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="tools" aria-label="Tool retrieval">
+      <div class="head">
+        <h1>Tool retrieval</h1>
+        <p>What the selector is shown for one step. The model never sees the whole catalog: a hybrid search (BM25 + embeddings) picks the top few tools, and the four built-ins are added.</p>
+      </div>
+      <form class="controls" id="tool-form">
+        <label class="grow">Step goal or request
+          <input type="search" id="q" value="Create a draft invoice for $50 USD" autocomplete="off">
+        </label>
+        <label>Top k
+          <select id="k"><option>5</option><option selected>8</option><option>10</option><option>15</option></select>
+        </label>
+        <label>Retrieval
+          <select id="rmode"><option value="hybrid" selected>hybrid</option><option value="lexical">BM25 only</option><option value="dense">embeddings only</option></select>
+        </label>
+        <label>Scope
+          <select id="service"><option value="">all services</option></select>
+        </label>
+        <button class="btn primary" type="submit">Search</button>
+      </form>
+      <div class="scroll" id="tool-out"></div>
+    </section>
+
+    <section id="catalog" aria-label="Catalog">
+      <div class="head">
+        <h1>Catalog</h1>
+        <p>Every API operation is ingested as data. Risk decides whether a human must approve the call; the idempotency column shows where the provider lets a write be retried safely.</p>
+      </div>
+      <div class="controls">
+        <label class="grow">Filter
+          <input type="search" id="cat-filter" placeholder="invoice, refund, GET, high ..." autocomplete="off">
+        </label>
+      </div>
+      <div class="scroll" id="cat-out"></div>
+    </section>
+
+    <section id="activity" aria-label="Activity log">
+      <div class="head">
+        <h1>Activity log</h1>
+        <p>The audit record of this session: each request and every tool call it made. This is what the agent reads when asked about the status of an earlier request.</p>
+      </div>
+      <div class="controls"><button class="btn" id="refresh-activity">Refresh</button></div>
+      <div class="scroll" id="act-out"></div>
+    </section>
+  </main>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const chip = (label, cls) => `<span class="chip ${esc(cls ?? label)}">${esc(label)}</span>`;
+const pretty = (v) => esc(typeof v === "string" ? v : JSON.stringify(v, null, 2));
+const state = { mode: "demo", thread: Math.random().toString(36).slice(2, 10), busy: false, status: null, catalog: null };
+
+async function api(path, body) {
+  const res = await fetch(path, body ? {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)} : undefined);
+  return res.json();
+}
+
+// ---------------------------------------------------------------- tabs, theme, mode
+function show(tab) {
+  if (!$(tab)) tab = "chat";
+  document.querySelectorAll("section").forEach((s) => s.classList.toggle("on", s.id === tab));
+  document.querySelectorAll("nav button").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === tab));
+  if (location.hash !== "#" + tab) history.replaceState(null, "", "#" + tab);
+  if (tab === "tools" && !$("tool-out").innerHTML) searchTools();
+  if (tab === "catalog") loadCatalog();
+  if (tab === "activity") loadActivity();
+}
+document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click", () => show(b.dataset.tab)));
+window.addEventListener("hashchange", () => show(location.hash.slice(1)));
+
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $("theme").textContent = t === "light" ? "Dark theme" : "Light theme";
+  try { localStorage.setItem("theme", t); } catch (e) {}
+}
+$("theme").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light"));
+let saved = null; try { saved = localStorage.getItem("theme"); } catch (e) {}
+setTheme(saved || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
+
+function setMode(mode) {
+  state.mode = mode;
+  $("mode-live").setAttribute("aria-pressed", mode === "live");
+  $("mode-demo").setAttribute("aria-pressed", mode === "demo");
+  const s = state.status;
+  $("banner").innerHTML = mode === "demo"
+    ? "<strong>Offline demo.</strong> Replies come from a scripted stand-in that only knows the example requests. No model is called. Retrieval, validation, approval, the executor and the mock PayPal are the real code."
+    : `Live model: <span class="mono">${esc(s.model)}</span> (router <span class="mono">${esc(s.router_model)}</span>${s.fallback_model ? `, fallback <span class="mono">${esc(s.fallback_model)}</span>` : ""}). Each request uses several model calls; the free tier allows about 20 per model per day.`;
+  newThread();
+}
+$("mode-live").addEventListener("click", () => setMode("live"));
+$("mode-demo").addEventListener("click", () => setMode("demo"));
+function newThread() {
+  state.thread = Math.random().toString(36).slice(2, 10);
+  $("log").innerHTML = `<p class="empty">New conversation. Pick an example below or type a request.</p>`;
+}
+$("new-thread").addEventListener("click", newThread);
+
+// ---------------------------------------------------------------- chat
+function add(html) {
+  const log = $("log");
+  if (log.querySelector(".empty")) log.innerHTML = "";
+  const el = document.createElement("div");
+  el.innerHTML = html;
+  const node = el.firstElementChild;
+  log.appendChild(node);
+  log.scrollTop = log.scrollHeight;
+  return node;
+}
+function stepHtml(s, active) {
+  const tool = s.tool ? `<span class="mono">${esc(s.tool)}</span>` : "<span>choosing a tool</span>";
+  const cands = s.candidates.length ? `<details><summary>${s.candidates.length} tools retrieved for this step</summary><pre>${esc(s.candidates.join("\n"))}</pre></details>` : "";
+  const args = s.args && Object.keys(s.args).length ? `<details><summary>Arguments</summary><pre>${pretty(s.args)}</pre></details>` : "";
+  const result = s.preview ? `<details><summary>Result preview</summary><pre>${esc(s.preview)}</pre></details>` : "";
+  const err = s.error ? `<div class="err">${esc(s.error)}</div>` : "";
+  const status = active && s.status === "pending" ? "running" : s.status;
+  return `<div class="step"><div class="n">${s.n}</div><div>
+    <div class="goal">${esc(s.goal)}</div>
+    <div class="meta">${chip(status)} ${chip(s.preset ? "direct" : s.kind, "kind")} ${tool}${s.attempts ? ` <span>${s.attempts} repair attempt${s.attempts > 1 ? "s" : ""}</span>` : ""}</div>
+    ${err}${cands}${args}${result}</div></div>`;
+}
+function traceHtml(v, running) {
+  const head = [v.intent ? `intent ${chip(v.intent, "kind")}` : "", v.outcome ? `outcome ${chip(v.outcome)}` : "",
+                running ? `<span><span class="spin"></span>working</span>` : ""].filter(Boolean).join(" ");
+  const steps = (v.plan || []).map((s) => stepHtml(s, running && s.n - 1 === v.cursor)).join("");
+  if (!steps && !head) return "";
+  return `<div class="trace"><header>${head || "plan"}</header>${steps}</div>`;
+}
+function approvalHtml(p) {
+  return `<div class="approve" role="group" aria-label="Approval needed">
+    <h2>Approval needed: ${esc(p.summary)}</h2>
+    <div>${chip(p.risk + " risk", p.risk)} Step ${esc(p.step)}: ${esc(p.goal)}</div>
+    <pre>${esc(p.method)} ${esc(p.path)}${p.query ? "\nquery: " + pretty(p.query) : ""}${p.body ? "\nbody: " + pretty(p.body) : ""}</pre>
+    <div class="row">
+      <button class="btn primary" data-act="approve">Approve</button>
+      <label style="flex:1">Reason (optional, for a rejection)<input type="text" data-reason></label>
+      <button class="btn danger" data-act="reject">Reject</button>
+    </div></div>`;
+}
+function render(node, v, running) {
+  if (v.error) { node.querySelector(".body").innerHTML = `<div class="bubble err">${esc(v.error)}</div>`; return; }
+  let html = traceHtml(v, running);
+  if (v.interrupt) html += approvalHtml(v.interrupt);
+  else if (v.reply) html += `<div class="bubble">${esc(v.reply)}</div>`;
+  else if (running && !html) html = `<div class="bubble"><span class="spin"></span>working</div>`;
+  node.querySelector(".body").innerHTML = html;
+  node.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", () => {
+    const reason = node.querySelector("[data-reason]").value;
+    node.querySelectorAll("[data-act]").forEach((x) => (x.disabled = true));
+    run(node, "/api/resume", {action: b.dataset.act, reason});
+  }));
+  $("log").scrollTop = $("log").scrollHeight;
+}
+async function run(node, path, payload) {
+  state.busy = true; $("send").disabled = true;
+  const who = {mode: state.mode, thread: state.thread};
+  const poll = setInterval(async () => {
+    try { const p = await api(`/api/progress?mode=${who.mode}&thread=${who.thread}`); if (state.busy && p.plan && p.plan.length) render(node, p, true); } catch (e) {}
+  }, 900);
+  let v;
+  try { v = await api(path, {...who, ...payload}); } catch (e) { v = {error: "The local server did not answer: " + e}; }
+  clearInterval(poll);
+  state.busy = false; $("send").disabled = false;
+  render(node, v, false);
+  $("input").focus();
+}
+function send(text) {
+  text = text.trim();
+  if (!text || state.busy) return;
+  add(`<div class="msg user"><div class="who">You</div><div class="bubble">${esc(text)}</div></div>`);
+  const node = add(`<div class="msg"><div class="who">Agent</div><div class="body"></div></div>`);
+  render(node, {}, true);
+  run(node, "/api/chat", {message: text});
+}
+$("form").addEventListener("submit", (e) => { e.preventDefault(); send($("input").value); $("input").value = ""; });
+$("input").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("form").requestSubmit(); } });
+
+// ---------------------------------------------------------------- tool retrieval
+async function searchTools() {
+  const p = new URLSearchParams({q: $("q").value, k: $("k").value, mode: $("rmode").value, service: $("service").value});
+  $("tool-out").innerHTML = `<p class="note"><span class="spin"></span>searching</p>`;
+  const r = await api("/api/tools?" + p);
+  if (!r.hits.length) { $("tool-out").innerHTML = `<p class="empty">No tools matched. Try the words the API itself would use.</p>`; return; }
+  const rows = r.hits.map((h, i) => `<tr>
+    <td class="num">${i + 1}</td>
+    <td><span class="mono">${esc(h.id)}</span><br>${esc(h.summary)}</td>
+    <td class="mono">${esc(h.method)} ${esc(h.path)}</td>
+    <td>${chip(h.risk)}</td>
+    <td class="num">${h.score}</td><td class="num">${h.lexical}</td><td class="num">${h.dense ?? "-"}</td>
+    <td class="num">${h.tokens.toLocaleString()}</td>
+    <td class="num">${h.nodes}${h.sent_nodes !== h.nodes ? ` &rarr; ${h.sent_nodes}` : ""}</td></tr>`).join("");
+  const shortened = r.hits.filter((h) => h.sent_nodes !== h.nodes).length;
+  $("tool-out").innerHTML = `
+    <div class="cards">
+      <div class="card"><div class="k">Tools in catalog</div><div class="v">${r.catalog.toLocaleString()}</div></div>
+      <div class="card"><div class="k">Shown to the model</div><div class="v">${r.hits.length} + ${r.builtins.length}</div></div>
+      <div class="card"><div class="k">Prompt cost of these schemas</div><div class="v">~${r.tokens.toLocaleString()} tok</div></div>
+      <div class="card"><div class="k">If every tool were bound</div><div class="v">~${r.all_tokens.toLocaleString()} tok</div></div>
+    </div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>#</th><th>Tool</th><th>Endpoint</th><th>Risk</th><th>Fused</th><th>BM25</th><th>Dense</th><th>Tokens</th><th>Schema nodes</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    <p class="note">Built-ins always added: <span class="mono">${esc(r.builtins.join(", "))}</span>.
+      Schema size of this request: ${r.cost}${r.sent_cost !== r.cost ? ` &rarr; ${r.sent_cost}` : ""} (nodes + enum values; Gemini refuses a forced call above about ${state.status.limits.request}, or one function above about ${state.status.limits.nodes} nodes).
+      ${shortened ? `${shortened} lower-ranked schema${shortened > 1 ? "s were" : " was"} shortened to fit; if the model picks one of those it is asked again with that tool alone.` : "Nothing had to be shortened."}</p>`;
+}
+$("tool-form").addEventListener("submit", (e) => { e.preventDefault(); searchTools(); });
+
+// ---------------------------------------------------------------- catalog
+async function loadCatalog() {
+  if (!state.catalog) state.catalog = (await api("/api/catalog")).groups;
+  const f = $("cat-filter").value.trim().toLowerCase();
+  const s = state.status;
+  let shown = 0;
+  const groups = state.catalog.map((g) => {
+    const tools = g.tools.filter((t) => !f || `${g.name} ${t.id} ${t.method} ${t.path} ${t.summary} ${t.risk}`.toLowerCase().includes(f));
+    if (!tools.length) return "";
+    shown += tools.length;
+    const rows = tools.map((t) => `<tr><td><span class="mono">${esc(t.id)}</span><br>${esc(t.summary)}</td>
+      <td class="mono">${esc(t.method)} ${esc(t.path)}</td><td>${chip(t.risk)}</td>
+      <td>${t.method === "GET" ? "-" : t.idempotent ? "key honoured" : "no key: never auto-retried"}</td></tr>`).join("");
+    return `<details class="group" ${f ? "open" : ""}><summary><span>${esc(g.name)}</span><span>${tools.length} tool${tools.length > 1 ? "s" : ""}</span></summary>
+      <div class="tablewrap"><table><thead><tr><th>Tool</th><th>Endpoint</th><th>Risk</th><th>Idempotency</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
+  }).join("");
+  const svc = Object.entries(s.services).map(([n, v]) => `<div class="card"><div class="k">${esc(n)}</div><div class="v">${v.tools}</div><div class="k">${v.groups} groups</div></div>`).join("");
+  $("cat-out").innerHTML = `<div class="cards">${svc}
+      <div class="card"><div class="k">Read (no approval)</div><div class="v">${s.risk.read ?? 0}</div></div>
+      <div class="card"><div class="k">Write</div><div class="v">${s.risk.write ?? 0}</div></div>
+      <div class="card"><div class="k">High risk${s.confirm_risk.includes("high") ? " (human approval)" : ""}</div><div class="v">${s.risk.high ?? 0}</div></div>
+    </div>
+    <p class="note">${shown} of ${s.tools} tools${f ? ` match "${esc(f)}"` : ""}.</p>${groups || `<p class="empty">Nothing matches that filter.</p>`}`;
+}
+$("cat-filter").addEventListener("input", loadCatalog);
+
+// ---------------------------------------------------------------- activity
+async function loadActivity() {
+  const r = await api("/api/activity?mode=" + state.mode);
+  if (!r.runs.length) { $("act-out").innerHTML = `<p class="empty">No requests yet in ${state.mode === "demo" ? "the offline demo" : "live mode"}. Send one from the Chat view.</p>`; return; }
+  $("act-out").innerHTML = r.runs.map((x) => `<div class="run">
+    <div class="top">${chip(x.status)} <span>${esc(x.request)}</span></div>
+    <div class="note" style="margin:4px 0 0">${esc((x.started_at || "").replace("T", " ").slice(0, 19))} UTC${x.intent ? " &middot; intent " + esc(x.intent) : ""}</div>
+    ${x.tool_calls.length ? `<ul class="calls">${x.tool_calls.map((c) => `<li>step ${c.step}: <span class="mono">${esc(c.tool_id)}</span> ${chip(c.status)}${c.http_status ? " HTTP " + c.http_status : ""}${c.error ? `<div class="err">${esc(c.error)}</div>` : ""}</li>`).join("")}</ul>` : ""}
+  </div>`).join("");
+}
+$("refresh-activity").addEventListener("click", loadActivity);
+
+// ---------------------------------------------------------------- start
+(async () => {
+  const s = state.status = await api("/api/status");
+  $("facts").innerHTML = `<div>Catalog <b>${s.tools.toLocaleString()} tools</b></div><div>Tools per step <b>${s.top_k} + 4 built-ins</b></div>
+    <div>PayPal <b>${esc(s.paypal)}</b></div><div>Embeddings <b>${esc(s.embeddings)}</b></div>`;
+  $("service").innerHTML += Object.keys(s.services).map((n) => `<option>${esc(n)}</option>`).join("");
+  $("examples").innerHTML = s.examples.map((e) => `<button type="button">${esc(e)}</button>`).join("");
+  $("examples").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => send(b.textContent)));
+  if (!s.modes.live) { $("mode-live").disabled = true; $("mode-live").title = s.errors.live || "Live model unavailable"; }
+  setMode("demo");
+  show(location.hash.slice(1) || "chat");
+})();
+</script>
+</body>
+</html>

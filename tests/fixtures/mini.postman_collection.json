@@ -1,0 +1,26 @@
+{
+  "info": {"name": "Mini PayPal (fixture)", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
+  "item": [
+    {"name": "Invoices", "item": [
+      {"name": "Create draft invoice", "request": {
+        "method": "POST",
+        "description": "Creates a draft invoice.",
+        "url": {"raw": "{{base_url}}/v2/invoicing/invoices", "host": ["{{base_url}}"], "path": ["v2", "invoicing", "invoices"]},
+        "body": {"mode": "raw", "raw": "{\n  \"detail\": {\"currency_code\": \"USD\", \"note\": \"Thanks\"},\n  \"primary_recipients\": [{\"billing_info\": {\"email_address\": \"{{payer_email}}\"}}],\n  \"items\": [{\"name\": \"Yoga mat\", \"quantity\": \"1\", \"unit_amount\": {\"currency_code\": \"USD\", \"value\": 50.0}}]\n}"}}},
+      {"name": "Send invoice", "request": {
+        "method": "POST",
+        "url": {"raw": "{{base_url}}/v2/invoicing/invoices/:invoice_id/send", "host": ["{{base_url}}"], "path": ["v2", "invoicing", "invoices", ":invoice_id", "send"]},
+        "body": {"mode": "raw", "raw": "{\"send_to_invoicer\": true}"}}},
+      {"name": "Show invoice details", "request": {
+        "method": "GET",
+        "url": {"raw": "{{base_url}}/v2/invoicing/invoices/{{invoice_id}}", "host": ["{{base_url}}"], "path": ["v2", "invoicing", "invoices", "{{invoice_id}}"]}}}
+    ]},
+    {"name": "Disputes", "item": [
+      {"name": "List disputes", "request": {
+        "method": "GET",
+        "url": {"raw": "{{base_url}}/v1/customer/disputes?dispute_state=REQUIRED_ACTION&page_size=10", "host": ["{{base_url}}"],
+                "path": ["v1", "customer", "disputes"],
+                "query": [{"key": "dispute_state", "value": "REQUIRED_ACTION"}, {"key": "page_size", "value": "10"}, {"key": "start_time", "value": "", "disabled": true}]}}}
+    ]}
+  ]
+}

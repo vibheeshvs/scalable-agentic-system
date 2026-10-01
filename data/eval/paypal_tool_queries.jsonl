@@ -1,0 +1,78 @@
+{"query": "draft a $50 invoice for vibheesh@example.com", "gold": ["paypal.invoices.create"]}
+{"query": "bill Acme Corp 1200 dollars for the consulting work", "gold": ["paypal.invoices.create"]}
+{"query": "email invoice INV2-Z56S-5LLA-Q52L-CPZ5 to the customer", "gold": ["paypal.invoices.send"]}
+{"query": "go ahead and deliver the draft bill to the payer", "gold": ["paypal.invoices.send"]}
+{"query": "nudge the customer who still hasn't paid invoice INV2-Z56S-5LLA-Q52L-CPZ5", "gold": ["paypal.invoices.remind"]}
+{"query": "send a payment reminder for my overdue invoice", "gold": ["paypal.invoices.remind"]}
+{"query": "void the invoice I sent to bob yesterday, he doesn't need it anymore", "gold": ["paypal.invoices.cancel"]}
+{"query": "mark invoice INV2-Z56S-5LLA-Q52L-CPZ5 as paid, the customer paid me in cash", "gold": ["paypal.invoices.payments"]}
+{"query": "record that I refunded part of this invoice outside of PayPal", "gold": ["paypal.invoices.refunds"]}
+{"query": "show me all my invoices", "gold": ["paypal.invoices.list", "paypal.invoices.search-invoices"]}
+{"query": "find unpaid invoices from last quarter", "gold": ["paypal.invoices.search-invoices", "paypal.invoices.list"]}
+{"query": "which invoices are still outstanding for bob@example.com", "gold": ["paypal.invoices.search-invoices", "paypal.invoices.list"]}
+{"query": "what's the status of invoice INV2-Z56S-5LLA-Q52L-CPZ5", "gold": ["paypal.invoices.get"]}
+{"query": "throw away the draft invoice I created by mistake", "gold": ["paypal.invoices.delete"]}
+{"query": "change the amount on my draft invoice to $75", "gold": ["paypal.invoices.update"]}
+{"query": "I need a QR code customers can scan to pay the invoice", "gold": ["paypal.invoices.generate-qr-code"]}
+{"query": "what invoice number should I use next", "gold": ["paypal.invoicing.generate-next-invoice-number"]}
+{"query": "save this invoice layout so I can reuse it later", "gold": ["paypal.templates.create"]}
+{"query": "what invoice templates do I have", "gold": ["paypal.templates.list"]}
+{"query": "What was my total sales volume last month?", "gold": ["paypal.search.get"]}
+{"query": "list all transactions between March 1 and March 31", "gold": ["paypal.search.get"]}
+{"query": "show me the payments I received yesterday", "gold": ["paypal.search.get"]}
+{"query": "how much money is sitting in my PayPal account right now", "gold": ["paypal.balances.get"]}
+{"query": "what's my current balance in EUR", "gold": ["paypal.balances.get"]}
+{"query": "Is there a dispute open from user_123?", "gold": ["paypal.disputes.list"]}
+{"query": "show me every open chargeback or buyer complaint", "gold": ["paypal.disputes.list"]}
+{"query": "give me the details of dispute PP-D-27803", "gold": ["paypal.disputes.get"]}
+{"query": "upload the shipping proof as evidence for dispute PP-D-27803", "gold": ["paypal.disputes.provide-evidence"]}
+{"query": "offer the buyer a partial refund to close the dispute", "gold": ["paypal.disputes.make-offer"]}
+{"query": "just accept the buyer's claim and give them their money back", "gold": ["paypal.disputes.accept-claim"]}
+{"query": "reply to the buyer in the dispute conversation", "gold": ["paypal.disputes.send-message"]}
+{"query": "escalate this case so PayPal makes the decision", "gold": ["paypal.disputes.escalate"]}
+{"query": "the buyer shipped the item back, confirm we received it", "gold": ["paypal.disputes.acknowledge-return-item"]}
+{"query": "appeal the dispute decision, we have new documents", "gold": ["paypal.disputes.appeal"]}
+{"query": "accept the settlement the buyer proposed", "gold": ["paypal.disputes.accept-offer"]}
+{"query": "reject the buyer's offer on the dispute", "gold": ["paypal.disputes.deny-offer"]}
+{"query": "refund $30 of capture 2GG279541U471931P", "gold": ["paypal.captures.refund"]}
+{"query": "give the customer their money back for that payment", "gold": ["paypal.captures.refund"]}
+{"query": "capture the funds for authorization 0VF52814937998046", "gold": ["paypal.authorizations.capture", "paypal.orders.capture"]}
+{"query": "release the hold on the customer's card, we won't be shipping", "gold": ["paypal.authorizations.void"]}
+{"query": "check the status of refund 1JU08902781691411", "gold": ["paypal.refunds.get"]}
+{"query": "the authorization is about to expire, extend it", "gold": ["paypal.authorizations.reauthorize"]}
+{"query": "look up the captured payment 2GG279541U471931P", "gold": ["paypal.captures.get"]}
+{"query": "create a checkout order for two t-shirts totalling $40", "gold": ["paypal.orders.create"]}
+{"query": "the buyer approved order 5O190127TN364715T, collect the money now", "gold": ["paypal.orders.capture"]}
+{"query": "look up order 5O190127TN364715T", "gold": ["paypal.orders.get"]}
+{"query": "add a shipping tracking number to order 5O190127TN364715T", "gold": ["paypal.orders.track.create", "paypal.trackers.post"]}
+{"query": "authorize the order payment now but take the money later", "gold": ["paypal.orders.authorize"]}
+{"query": "pay my three freelancers $100 each by email", "gold": ["paypal.payouts.post"]}
+{"query": "did payout batch 5UXD2E8A7EBQJ go through", "gold": ["paypal.payouts.get"]}
+{"query": "bob never claimed his payout, cancel it and return the money", "gold": ["paypal.payouts-item.cancel"]}
+{"query": "status of payout item 8AELMXH8UB2P8", "gold": ["paypal.payouts-item.get"]}
+{"query": "create a monthly $9.99 membership plan", "gold": ["paypal.plans.create"]}
+{"query": "list my billing plans", "gold": ["paypal.plans.list"]}
+{"query": "raise the price of my gold plan to $19", "gold": ["paypal.plans.update-pricing-schemes", "paypal.plans.patch"]}
+{"query": "stop the plan so nobody new can subscribe to it", "gold": ["paypal.plans.deactivate"]}
+{"query": "cancel subscription I-BW452GLLEP1G", "gold": ["paypal.subscriptions.cancel"]}
+{"query": "pause the customer's subscription for a month", "gold": ["paypal.subscriptions.suspend"]}
+{"query": "resume a paused subscription", "gold": ["paypal.subscriptions.activate"]}
+{"query": "upgrade the subscriber to the premium plan", "gold": ["paypal.subscriptions.revise"]}
+{"query": "what payments has subscription I-BW452GLLEP1G made so far", "gold": ["paypal.subscriptions.transactions"]}
+{"query": "sign a customer up to plan P-5ML4271244454362WXNWU5NQ", "gold": ["paypal.subscriptions.create"]}
+{"query": "add a yoga course to my product catalog", "gold": ["paypal.products.create"]}
+{"query": "what products have I set up", "gold": ["paypal.products.list"]}
+{"query": "notify my server at https://example.com/hook whenever a payment completes", "gold": ["paypal.webhooks.post"]}
+{"query": "which webhook endpoints are registered", "gold": ["paypal.webhooks.list"]}
+{"query": "remove the old webhook listener", "gold": ["paypal.webhooks.delete"]}
+{"query": "check that this webhook message really came from PayPal", "gold": ["paypal.verify-webhook-signature.post"]}
+{"query": "fire a fake PAYMENT.CAPTURE.COMPLETED event to test my endpoint", "gold": ["paypal.simulate-event.post"]}
+{"query": "my server missed event WH-2WR32451HC0233532, send it again", "gold": ["paypal.webhooks-events.resend"]}
+{"query": "what event types can I subscribe to", "gold": ["paypal.webhooks-event-types.list"]}
+{"query": "add UPS tracking 1Z999AA10123456784 to transaction 8MC585209K746392H", "gold": ["paypal.trackers.post", "paypal.orders.track.create"]}
+{"query": "upload tracking numbers for twenty transactions at once", "gold": ["paypal.trackers-batch.post"]}
+{"query": "save the customer's card so they can pay faster next time", "gold": ["paypal.payment-tokens.create", "paypal.setup-tokens.create"]}
+{"query": "delete the saved payment method for this customer", "gold": ["paypal.payment-tokens.delete"]}
+{"query": "which saved payment methods does customer 12345 have", "gold": ["paypal.customer.payment-tokens.get"]}
+{"query": "customize the checkout page with my brand name and logo", "gold": ["paypal.web-profile.create"]}
+{"query": "onboard a new seller onto my platform", "gold": ["paypal.partner-referrals.create"]}
