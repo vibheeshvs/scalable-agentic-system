@@ -17,6 +17,16 @@ you> Send an invoice for $50 to vibheesh@example.com
   Approve? [y/N] y
 ```
 
+## What was done and how it was checked
+
+| What | How it was checked |
+|---|---|
+| **The design** ([DESIGN.md](DESIGN.md)) | Covers every point in the brief: agent structure, tool selection and routing, state management, scalability, error handling, the RAG and system-search tools, and the framework trade-offs. |
+| **A working implementation** | 48 automated tests written alongside the code (`pytest`, no API key needed). They run the real graph, retrieval and executor against a mock PayPal, with only the model scripted. |
+| **Scale beyond one API** | Retrieval measured on 78 hand-written requests as the catalog grows from 112 to 1,095 tools. The right tool is in the top 8 for 82% of them, and stays there at 1,095 tools once search is scoped to the user's service (71% unscoped, because Stripe's tools overlap PayPal's). |
+| **Behaviour with a real model** | The brief's seven example requests were run against live Gemini models on the free tier. The results are in DESIGN.md section 12. Those runs found problems the offline tests could not, and the fixes are described where they apply. |
+| **A way to try it** | A terminal chat and a local web console, both working without PayPal credentials. |
+
 ## Quick start
 
 Python 3.10+.
